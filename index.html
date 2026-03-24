@@ -167,19 +167,12 @@
         /* --- OBEN BUTTONS --- */
         .top-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 3.5rem; height: 3.5rem;
-            background: white; border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #e2e8f0;
-            transition: all 0.1s;
-        }
-        @media (max-width: 380px) {
-            .top-btn { width: 3rem; height: 3rem; }
-            .top-btn-label { font-size: 8px !important; }
+            width: 4rem; height: 3.5rem; background: white; border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
         }
         html.dark .top-btn { background: #1e293b; border-color: #334155; }
         .top-btn:active { transform: scale(0.95); }
-        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+        .top-btn-label { font-size: 10px; font-weight: 700; margin-top: 2px; }
 
         /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
@@ -284,9 +277,9 @@
                     
                     <!-- Links: Ansicht -->
                     <div class="flex gap-1">
-                        <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
+                        <button onclick="toggleView()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Ansicht">
                             <i data-lucide="layout-grid" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Ansicht</span>
+                            <span class="top-btn-label hidden">Ansicht</span>
                         </button>
                     </div>
 
@@ -305,17 +298,17 @@
 
                     <!-- Rechts: Teilen, Druck & Spruch -->
                     <div class="flex gap-1">
-                         <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700" title="Teilen">
+                         <button onclick="shareApp()" class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Teilen">
                             <i data-lucide="send" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Teilen</span>
+                            <span class="top-btn-label hidden">Teilen</span>
                         </button>
-                         <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
+                         <button onclick="window.print()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-sm active:scale-95" title="Drucken">
                             <i data-lucide="printer" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Druck</span>
+                            <span class="top-btn-label hidden">Druck</span>
                         </button>
-                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                         <button onclick="newQuote()" class="hidden sm:flex w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 items-center justify-center text-pink-500 dark:text-pink-400 shadow-sm active:scale-95" title="Spruch">
                             <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Spruch</span>
+                            <span class="top-btn-label hidden">Spruch</span>
                         </button>
                     </div>
                 </div>
@@ -810,6 +803,33 @@
             }
         }
 
+        function updateManifest(iconUrl, isSvg = false) {
+            const manifest = {
+                name: "Schulplaner",
+                short_name: "Planer",
+                start_url: window.location.pathname,
+                display: "standalone",
+                background_color: "#f0f9ff",
+                theme_color: "#f8fafc",
+                icons: [{
+                    src: iconUrl,
+                    sizes: "192x192 512x512",
+                    type: isSvg ? "image/svg+xml" : "image/jpeg",
+                    purpose: "any maskable"
+                }]
+            };
+            const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            let manifestEl = document.getElementById('dynamic-manifest');
+            if (!manifestEl) {
+                manifestEl = document.createElement('link');
+                manifestEl.rel = 'manifest';
+                manifestEl.id = 'dynamic-manifest';
+                document.head.appendChild(manifestEl);
+            }
+            manifestEl.href = manifestURL;
+        }
+
         function handleAvatarUpload(event) {
             const file = event.target.files[0];
             if(!file) return;
@@ -846,12 +866,14 @@
                 printEl.src = dataUrl; printEl.classList.remove('hidden');
                 if(favicon) favicon.href = dataUrl;
                 if(appleIcon) appleIcon.href = dataUrl;
+                updateManifest(dataUrl, false);
             } else {
                 els[0].src = defaultSvg; els[0].classList.add('p-1');
                 els[1].src = defaultSvg; els[1].classList.add('p-3');
                 printEl.classList.add('hidden');
                 if(favicon) favicon.href = defaultSvg;
                 if(appleIcon) appleIcon.href = defaultSvg;
+                updateManifest(defaultSvg, true);
             }
         }
 
