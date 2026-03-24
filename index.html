@@ -8,6 +8,10 @@
     <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
     <title>Schulplaner Ultimate</title>
     
+    <!-- Dynamische Icons für PWA / Startbildschirm -->
+    <link id="favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+">
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -25,6 +29,22 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Quicksand:wght@500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+
+    <!-- Darkmode & Theme Anti-Flash: Verhindert weißes Blitzen beim Neuladen/Aktualisieren -->
+    <script>
+        try {
+            let profile = localStorage.getItem('active_profile') || "MeinPlan";
+            let raw = localStorage.getItem("SCHULPLANER_ULTIMATE_DATA_" + profile);
+            if (raw) {
+                let data = JSON.parse(raw);
+                if (data.darkMode) {
+                    document.documentElement.classList.add('dark');
+                    document.getElementById('meta-theme-color')?.setAttribute('content', '#0f172a');
+                }
+                if (data.theme) document.documentElement.classList.add('theme-' + data.theme);
+            }
+        } catch(e) {}
+    </script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -49,8 +69,26 @@
         /* --- GRUNDLAGEN & THEMES --- */
         :root { --theme-bg: #f8fafc; --theme-card: rgba(255,255,255,0.85); --theme-header: rgba(255, 255, 255, 0.98); }
         
-        html.theme-blue { --theme-bg: #f0f9ff; }
-        html.theme-mint { --theme-bg: #ecfdf5; }
+        html.theme-red { --theme-bg: #fef2f2; }
+        html.theme-orange { --theme-bg: #fff7ed; }
+        html.theme-amber { --theme-bg: #fffbeb; }
+        html.theme-yellow { --theme-bg: #fefce8; }
+        html.theme-lime { --theme-bg: #f7fee7; }
+        html.theme-green { --theme-bg: #f0fdf4; }
+        html.theme-emerald { --theme-bg: #ecfdf5; }
+        html.theme-teal { --theme-bg: #f0fdfa; }
+        html.theme-cyan { --theme-bg: #ecfeff; }
+        html.theme-sky { --theme-bg: #f0f9ff; }
+        html.theme-blue { --theme-bg: #eff6ff; }
+        html.theme-indigo { --theme-bg: #eef2ff; }
+        html.theme-violet { --theme-bg: #f5f3ff; }
+        html.theme-purple { --theme-bg: #faf5ff; }
+        html.theme-fuchsia { --theme-bg: #fdf4ff; }
+        html.theme-pink { --theme-bg: #fdf2f8; }
+        html.theme-rose { --theme-bg: #fff1f2; }
+        html.theme-slate { --theme-bg: #f8fafc; }
+        html.theme-zinc { --theme-bg: #fafafa; }
+        html.theme-stone { --theme-bg: #fafaf9; }
         html.theme-lavender { --theme-bg: #faf5ff; }
         html.theme-peach { --theme-bg: #fff7ed; }
         html.theme-gold { --theme-bg: #fffbeb; background-image: linear-gradient(135deg, #fef08a 0%, #fde047 100%); }
@@ -64,16 +102,11 @@
         body {
             font-family: 'Quicksand', sans-serif;
             background-color: var(--theme-bg);
-            background-image: radial-gradient(currentColor 1px, transparent 1px);
-            background-size: 20px 20px;
-            color: rgba(148, 163, 184, 0.2);
             padding-bottom: 90px; /* Platz für Bottom Nav */
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none;
             transition: background-color 0.3s ease;
         }
-
-        html.dark body { color: rgba(71, 85, 105, 0.2); }
 
         .content-wrapper { color: #334155; }
         html.dark .content-wrapper { color: #f8fafc; }
@@ -435,11 +468,9 @@
                             </label>
                         </div>
 
-                        <div class="flex gap-3 justify-center">
-                            <button onclick="setTheme('blue')" class="w-10 h-10 rounded-full bg-[#f0f9ff] border-2 border-blue-200 shadow hover:scale-110 transition"></button>
-                            <button onclick="setTheme('mint')" class="w-10 h-10 rounded-full bg-[#ecfdf5] border-2 border-emerald-200 shadow hover:scale-110 transition"></button>
-                            <button onclick="setTheme('peach')" class="w-10 h-10 rounded-full bg-[#fff7ed] border-2 border-orange-200 shadow hover:scale-110 transition"></button>
-                            <button onclick="setTheme('dark')" class="w-10 h-10 rounded-full bg-[#0f172a] border-2 border-slate-600 shadow hover:scale-110 transition"></button>
+                        <!-- Neues Raster: 20+ Theme Buttons Container -->
+                        <div id="theme-container" class="flex flex-wrap gap-2 justify-center">
+                            <!-- Wird per JS dynamisch gefüllt -->
                         </div>
                     </div>
 
@@ -502,6 +533,54 @@
         let viewMode = localStorage.getItem('view_mode') || 'mobile';
         let hasUnsavedChanges = false;
 
+        // --- THEMES ---
+        const APP_THEMES = [
+            {id: 'red', hex: '#fef2f2', border: '#fca5a5'},
+            {id: 'orange', hex: '#fff7ed', border: '#fdba74'},
+            {id: 'amber', hex: '#fffbeb', border: '#fcd34d'},
+            {id: 'yellow', hex: '#fefce8', border: '#fde047'},
+            {id: 'lime', hex: '#f7fee7', border: '#bef264'},
+            {id: 'green', hex: '#f0fdf4', border: '#86efac'},
+            {id: 'emerald', hex: '#ecfdf5', border: '#6ee7b7'},
+            {id: 'teal', hex: '#f0fdfa', border: '#5eead4'},
+            {id: 'cyan', hex: '#ecfeff', border: '#67e8f9'},
+            {id: 'sky', hex: '#f0f9ff', border: '#7dd3fc'},
+            {id: 'blue', hex: '#eff6ff', border: '#93c5fd'},
+            {id: 'indigo', hex: '#eef2ff', border: '#a5b4fc'},
+            {id: 'violet', hex: '#f5f3ff', border: '#c4b5fd'},
+            {id: 'purple', hex: '#faf5ff', border: '#d8b4fe'},
+            {id: 'fuchsia', hex: '#fdf4ff', border: '#f0abfc'},
+            {id: 'pink', hex: '#fdf2f8', border: '#f9a8d4'},
+            {id: 'rose', hex: '#fff1f2', border: '#fda4af'},
+            {id: 'slate', hex: '#f8fafc', border: '#cbd5e1'},
+            {id: 'zinc', hex: '#fafafa', border: '#e4e4e7'},
+            {id: 'stone', hex: '#fafaf9', border: '#d6d3d1'},
+            {id: 'dark', hex: '#0f172a', border: '#475569'},
+            {id: 'gold', hex: 'linear-gradient(135deg, #fef08a 0%, #fde047 100%)', border: '#ca8a04', special: true}
+        ];
+
+        function renderThemes() {
+            const container = document.getElementById('theme-container');
+            if(!container) return;
+            let html = '';
+            APP_THEMES.forEach(t => {
+                if(t.special) {
+                    html += `<div class="relative group">
+                                <button onclick="setTheme('gold')" id="btn-theme-gold" class="w-8 h-8 rounded-full border-2 opacity-50 cursor-not-allowed relative hover:scale-110 transition shadow-sm" style="background: ${t.hex}; border-color: ${t.border}">
+                                    <i data-lucide="lock" class="w-3 h-3 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-yellow-900"></i>
+                                </button>
+                                <div class="absolute bottom-10 left-1/2 -translate-x-1/2 w-48 bg-slate-800 text-white text-xs p-2 rounded hidden group-hover:block text-center z-50">
+                                    Erreiche einen Streak von 5 für Gold!
+                                </div>
+                            </div>`;
+                } else {
+                    html += `<button onclick="setTheme('${t.id}')" class="w-8 h-8 rounded-full border-2 hover:scale-110 transition shadow-sm" style="background: ${t.hex}; border-color: ${t.border}"></button>`;
+                }
+            });
+            container.innerHTML = html;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         window.markDirty = function() {
             hasUnsavedChanges = true;
             const statusEl = document.getElementById('save-status');
@@ -514,6 +593,8 @@
         function init() {
             // Import Handler prüfen BEVOR wir laden
             handleImport();
+
+            renderThemes();
 
             loadData();
             applyTheme(appData.theme);
@@ -632,8 +713,13 @@
 
         function toggleDarkMode(isDark) {
             appData.darkMode = isDark;
-            if(isDark) document.documentElement.classList.add('dark');
-            else document.documentElement.classList.remove('dark');
+            if(isDark) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('meta-theme-color')?.setAttribute('content', '#0f172a');
+            } else {
+                document.documentElement.classList.remove('dark');
+                updateThemeMetaColor();
+            }
             saveData();
         }
 
@@ -646,6 +732,14 @@
         function applyTheme(theme) {
             const body = document.getElementById('app-body');
             body.className = `view-${viewMode} theme-${theme} flex flex-col items-center`;
+            if(!appData.darkMode) updateThemeMetaColor();
+        }
+
+        function updateThemeMetaColor() {
+            setTimeout(() => {
+                const bgColor = getComputedStyle(document.body).backgroundColor;
+                document.getElementById('meta-theme-color')?.setAttribute('content', bgColor);
+            }, 50);
         }
 
         function syncName(val, skipSave = false) {
@@ -689,14 +783,20 @@
             const defaultSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+";
             const els = [document.getElementById('header-avatar'), document.getElementById('profile-avatar')];
             const printEl = document.getElementById('print-avatar');
+            const favicon = document.getElementById('favicon');
+            const appleIcon = document.getElementById('apple-touch-icon');
             
             if(dataUrl) {
                 els.forEach(el => { el.src = dataUrl; el.classList.remove('p-1', 'p-3'); });
                 printEl.src = dataUrl; printEl.classList.remove('hidden');
+                if(favicon) favicon.href = dataUrl;
+                if(appleIcon) appleIcon.href = dataUrl;
             } else {
                 els[0].src = defaultSvg; els[0].classList.add('p-1');
                 els[1].src = defaultSvg; els[1].classList.add('p-3');
                 printEl.classList.add('hidden');
+                if(favicon) favicon.href = defaultSvg;
+                if(appleIcon) appleIcon.href = defaultSvg;
             }
         }
 
@@ -707,7 +807,7 @@
             if(!text) return '';
             const s = text.toLowerCase().trim();
             
-            if(s === 'pause' || s.includes('pause')) return 'background-color: #cbd5e1 !important; color: #334155 !important; font-style: italic; border-style: dashed;';
+            if(s === 'pause' || s.includes('pause')) return 'background-color: #cbd5e1 !important; color: #334155 !important; font-weight: bold; border-style: dashed;';
             
             if (appData.subjects) {
                 let customSubj = appData.subjects.find(sub => sub.name && sub.name.toLowerCase().trim() === s);
