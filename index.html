@@ -41,7 +41,10 @@
                     document.documentElement.classList.add('dark');
                     document.getElementById('meta-theme-color')?.setAttribute('content', '#0f172a');
                 }
-                if (data.theme) document.documentElement.classList.add('theme-' + data.theme);
+                if (data.theme) {
+                    document.documentElement.className = document.documentElement.className.replace(/\btheme-[a-z]+\b/g, '').trim();
+                    document.documentElement.classList.add('theme-' + data.theme);
+                }
             }
         } catch(e) {}
     </script>
@@ -91,6 +94,7 @@
         html.theme-stone { --theme-bg: #fafaf9; }
         html.theme-lavender { --theme-bg: #faf5ff; }
         html.theme-peach { --theme-bg: #fff7ed; }
+        html.theme-dark { --theme-bg: #0f172a; }
         html.theme-gold { --theme-bg: #fffbeb; background-image: linear-gradient(135deg, #fef08a 0%, #fde047 100%); }
 
         html.dark {
@@ -273,9 +277,8 @@
                     
                     <!-- Links: Ansicht -->
                     <div class="flex gap-1">
-                        <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
+                        <button onclick="toggleView()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Ansicht">
                             <i data-lucide="layout-grid" class="w-5 h-5"></i>
-                            <span class="top-btn-label">Ansicht</span>
                         </button>
                     </div>
 
@@ -294,17 +297,14 @@
 
                     <!-- Rechts: Teilen, Druck & Spruch -->
                     <div class="flex gap-1">
-                         <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400" title="Teilen">
+                         <button onclick="shareApp()" class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Teilen">
                             <i data-lucide="send" class="w-5 h-5"></i>
-                            <span class="top-btn-label">Teilen</span>
                         </button>
-                         <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
+                         <button onclick="window.print()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-sm active:scale-95" title="Drucken">
                             <i data-lucide="printer" class="w-5 h-5"></i>
-                            <span class="top-btn-label">Druck</span>
                         </button>
-                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                         <button onclick="newQuote()" class="hidden sm:flex w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 items-center justify-center text-pink-500 dark:text-pink-400 shadow-sm active:scale-95" title="Spruch">
                             <i data-lucide="sparkles" class="w-5 h-5"></i>
-                            <span class="top-btn-label">Spruch</span>
                         </button>
                     </div>
                 </div>
@@ -464,7 +464,7 @@
                             </label>
                         </div>
 
-                        <!-- Neues Raster: 20+ Theme Buttons Container -->
+                        <!-- Neues Raster: 22 Theme Buttons Container -->
                         <div id="theme-container" class="flex flex-wrap gap-2 justify-center">
                             <!-- Wird per JS dynamisch gefüllt -->
                         </div>
@@ -587,14 +587,15 @@
         };
 
         function init() {
-            // Import Handler prüfen BEVOR wir laden
             handleImport();
 
             renderThemes();
 
             loadData();
             applyTheme(appData.theme);
-            if(appData.darkMode) document.documentElement.classList.add('dark');
+            if(appData.darkMode) {
+                document.documentElement.classList.add('dark');
+            }
             
             document.getElementById('dark-mode-toggle').checked = appData.darkMode;
             
@@ -604,6 +605,7 @@
             renderTasks();
             renderExams();
             renderSubjects();
+            checkGoals();
             
             if(typeof lucide !== 'undefined') lucide.createIcons();
             
@@ -622,7 +624,6 @@
             const importData = urlParams.get('import');
             if (importData) {
                 try {
-                    // Robuste Dekodierung (inkl. Umlaute)
                     const parsedStr = decodeURIComponent(escape(atob(importData)));
                     const parsed = JSON.parse(parsedStr);
                     
@@ -632,7 +633,6 @@
                             currentProfile = newName;
                             localStorage.setItem('active_profile', currentProfile);
                             
-                            // Lade existierende Daten oder erstelle neue Struktur
                             const raw = localStorage.getItem(STORAGE_KEY + "_" + currentProfile);
                             if(raw) { 
                                 try { appData = JSON.parse(raw); } catch(e) {} 
@@ -640,7 +640,6 @@
                                 appData = { plan: {}, tasks: [], exams: [], subjects: [], streak: 0, theme: 'blue', darkMode: false, abWeeks: false, quote: '', notes: '', week: '' };
                             }
                             
-                            // Rekonstruiere minimierten Plan
                             const newPlan = {};
                             if (parsed.p) {
                                 for (const k in parsed.p) {
@@ -649,21 +648,19 @@
                                     else newPlan[k] = { text: v.t || '', status: v.s || 0 };
                                 }
                             } else if (parsed.plan) {
-                                newPlan = parsed.plan; // Fallback für alte Links
+                                newPlan = parsed.plan;
                             }
 
-                            // Rekonstruiere Fächer
                             const newSubjects = [];
                             if (parsed.s) {
                                 parsed.s.forEach((s, idx) => {
-                                    if (s.name !== undefined) newSubjects.push(s); // Fallback alt
+                                    if (s.name !== undefined) newSubjects.push(s); 
                                     else newSubjects.push({ id: Date.now() + idx, name: s.n || '', color: s.c || '', teacher: '', grade: '', room: '' });
                                 });
                             } else if (parsed.subjects) {
                                 parsed.subjects.forEach(s => newSubjects.push(s));
                             }
                             
-                            // Zuweisen
                             appData.plan = newPlan;
                             if (parsed.s || parsed.subjects) appData.subjects = newSubjects;
                             
@@ -671,7 +668,6 @@
                             alert("Der Plan wurde erfolgreich geladen!");
                         }
                     }
-                    // URL bereinigen, damit man nicht nochmal gefragt wird
                     window.history.replaceState({}, document.title, window.location.pathname);
                 } catch (e) {
                     console.error("Import Fehler:", e);
@@ -683,7 +679,6 @@
 
         // --- TEILEN LOGIK (Komprimiert für Messenger) ---
         function shareApp() {
-            // Um den Link kurz zu halten, filtern wir leere Felder heraus und komprimieren die Namen
             const minPlan = {};
             for (const k in appData.plan) {
                 const v = appData.plan[k];
@@ -699,7 +694,6 @@
             const payloadData = { p: minPlan, s: minSubjects };
             const payload = JSON.stringify(payloadData);
             
-            // Sicheres Base64-Encoding auch für Umlaute!
             const encoded = btoa(unescape(encodeURIComponent(payload)));
             const baseUrl = window.location.href.split('?')[0];
             const shareUrl = baseUrl + '?import=' + encoded;
@@ -758,18 +752,29 @@
                 document.documentElement.classList.remove('dark');
                 updateThemeMetaColor();
             }
-            saveData(true); // DIREKTES SPEICHERN BEI THEME ÄNDERUNG
+            saveData(true);
         }
 
         function setTheme(theme) {
+            if(theme === 'gold' && appData.streak < 5) {
+                alert("Du brauchst einen Hausaufgaben-Streak von 5 für das Gold-Theme!");
+                return;
+            }
             appData.theme = theme;
             applyTheme(theme);
-            saveData(true); // DIREKTES SPEICHERN BEI THEME ÄNDERUNG
+            saveData(true);
         }
 
         function applyTheme(theme) {
+            const htmlEl = document.documentElement;
+            htmlEl.className = htmlEl.className.replace(/\btheme-[a-z]+\b/g, '').trim();
+            if (theme && theme !== 'dark') {
+                 htmlEl.classList.add(`theme-${theme}`);
+            }
+
             const body = document.getElementById('app-body');
-            body.className = `view-${viewMode} theme-${theme} flex flex-col items-center`;
+            body.className = `view-${viewMode} flex flex-col items-center`;
+            
             if(!appData.darkMode) updateThemeMetaColor();
         }
 
@@ -986,6 +991,17 @@
             container.innerHTML = html;
         }
 
+        function checkGoals() {
+            const btnGold = document.getElementById('btn-theme-gold');
+            if(btnGold && appData.streak >= 5) {
+                btnGold.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnGold.innerHTML = ''; 
+                if(btnGold.nextElementSibling) {
+                    btnGold.nextElementSibling.innerHTML = "<strong>Gold Theme:</strong> Freigeschaltet! ✨";
+                }
+            }
+        }
+
         function addHomework() {
             const sub = document.getElementById('new-hw-subject').value.trim();
             const text = document.getElementById('new-hw-text').value.trim();
@@ -999,6 +1015,12 @@
             const task = appData.tasks.find(t => t.id === id);
             if(task) {
                 task.done = !task.done;
+                if (task.done) {
+                    appData.streak++;
+                    checkGoals();
+                } else {
+                    appData.streak = Math.max(0, appData.streak - 1);
+                }
                 markDirty(); renderTasks();
             }
         }
