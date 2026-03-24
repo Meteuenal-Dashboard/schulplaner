@@ -177,9 +177,13 @@
             width: 4rem; height: 3.5rem; background: white; border-radius: 0.75rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
         }
+        @media (max-width: 390px) {
+            .top-btn { width: 3rem; height: 3rem; }
+            .top-btn-label { font-size: 8px !important; }
+        }
         html.dark .top-btn { background: #1e293b; border-color: #334155; }
         .top-btn:active { transform: scale(0.95); }
-        .top-btn-label { font-size: 10px; font-weight: 700; margin-top: 2px; }
+        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
 
         /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
@@ -363,6 +367,22 @@
                 </div>
 
                 <div id="mobile-view" class="w-full pb-4"></div>
+                
+                <!-- FOOTER (Spruch & Notizen) innerhalb von Tab 1 für die Mobile Ansicht -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 page-break-avoid">
+                    <div class="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-slate-800 dark:to-slate-800 p-4 rounded-2xl border border-orange-100 dark:border-slate-700 shadow-sm text-center">
+                        <div class="flex items-center justify-center gap-2 text-orange-400 dark:text-orange-500 mb-2 font-bold text-xs uppercase">
+                            <i data-lucide="sun" class="w-4 h-4"></i> Spruch des Tages
+                        </div>
+                        <textarea id="quote-box" class="w-full bg-transparent text-center text-xl text-orange-800 dark:text-orange-300 handwritten outline-none resize-none" rows="2" oninput="markDirty()"></textarea>
+                    </div>
+                    <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 p-4 rounded-2xl border border-blue-100 dark:border-slate-700 shadow-sm text-center">
+                        <div class="flex items-center justify-center gap-2 text-blue-400 dark:text-blue-500 mb-2 font-bold text-xs uppercase">
+                            <i data-lucide="sticky-note" class="w-4 h-4"></i> Notizen
+                        </div>
+                        <textarea id="notes-box" class="w-full bg-transparent text-center text-sm text-blue-900 dark:text-blue-300 outline-none resize-none font-medium" rows="3" placeholder="Was wichtiges..." oninput="markDirty()"></textarea>
+                    </div>
+                </div>
             </div>
 
             <!-- ========================================== -->
@@ -534,7 +554,8 @@
             abWeeks: false,
             quote: '',
             notes: '',
-            week: ''
+            week: '',
+            quoteQueue: []
         };
 
         const STORAGE_KEY = "SCHULPLANER_ULTIMATE_DATA";
@@ -652,7 +673,7 @@
                             if(raw) { 
                                 try { appData = JSON.parse(raw); } catch(e) {} 
                             } else {
-                                appData = { plan: {}, tasks: [], exams: [], subjects: [], streak: 0, theme: 'blue', darkMode: false, abWeeks: false, quote: '', notes: '', week: '' };
+                                appData = { plan: {}, tasks: [], exams: [], subjects: [], streak: 0, theme: 'blue', darkMode: false, abWeeks: false, quote: '', notes: '', week: '', quoteQueue: [] };
                             }
                             
                             const newPlan = {};
@@ -1321,11 +1342,54 @@
             }
         }
 
+        const ALL_QUOTES = [
+            "Du rockst das! 🚀", "Glaube an dich! ✨", "Heute wird toll! ☀️", "Lernen macht stark! 💪", "Kleine Schritte! 👣",
+            "Bleib neugierig! 🔍", "Gib niemals auf! 💯", "Jeder Tag ist ein neuer Anfang. 🌅", "Du bist stark! 🦁", "Träume groß. 🌌",
+            "Fehler sind Helfer beim Lernen. 🛠️", "Du schaffst das mit links! ✌️", "Sei frech, wild und wunderbar! 🌟", "Dein Lächeln ist deine Superkraft. 😁",
+            "In der Ruhe liegt die Kraft. 🧘", "Sei der Held deiner Geschichte. 🦸", "Alles ist möglich! 🎯", "Mach heute so gut, dass das Gestern eifersüchtig wird. 😎",
+            "Wissen ist Macht. 📚", "Sei die beste Version von dir selbst. 🥇", "Dein Potenzial ist unendlich. 🚀", "Glaube an deine Träume. 💭",
+            "Kopf hoch, sonst fällt die Krone runter. 👑", "Erfolg beginnt im Kopf. 🧠", "Du bist einzigartig. 🦄", "Mach es einfach. ✔️",
+            "Fokus und Disziplin. 🎯", "Atme tief durch und mach weiter. 🌬️", "Sei stolz auf dich. 😌", "Jeder Fehler ist ein Schritt nach vorn. 📈",
+            "Geh deinen eigenen Weg. 🛤️", "Zweifle nicht an dir. 🛡️", "Du bist wertvoll. 💎", "Entdecke deine Talente. 🎨", "Mut steht am Anfang des Handelns. 🦁",
+            "Lass dich nicht unterkriegen. 🧱", "Sei ein Vorbild. 🌟", "Übung macht den Meister. 🛠️", "Der Weg ist das Ziel. 🗺️", "Bleib dir treu. 💯",
+            "Vertraue dem Prozess. 🌱", "Sei dankbar für heute. 🙏", "Du hast die Power. ⚡", "Wunder beginnen dann, wenn du an sie glaubst. ✨",
+            "Erschaffe dir deine eigene Zukunft. 🏗️", "Jeder Tag bietet neue Chancen. 🎲", "Genieße den Moment. ⏳", "Nimm Herausforderungen an. 🧗",
+            "Geduld bringt Rosen. 🌹", "Nichts ist unmöglich. 🌠", "Du bist genug. ❤️", "Strahle von innen. ☀️",
+            "You got this! 🚀", "Believe in yourself! ✨", "Today is your day! ☀️", "Knowledge is power! 📚", "Small steps! 👣",
+            "Stay curious! 🔍", "Never give up! 💯", "Every day is a new beginning. 🌅", "You are strong! 🦁", "Dream big. 🌌",
+            "Mistakes are proof that you are trying. 🛠️", "You can do it easily! ✌️", "Be bold, be brave, be you! 🌟", "Your smile is your superpower. 😁",
+            "Peace comes from within. 🧘", "Be the hero of your story. 🦸", "Anything is possible! 🎯", "Make today awesome. 😎",
+            "Be the best version of you. 🥇", "Your potential is endless. 🚀", "Believe in your dreams. 💭", "Keep your head up. 👑",
+            "Success starts in the mind. 🧠", "You are unique. 🦄", "Just do it. ✔️", "Focus and discipline. 🎯", "Take a deep breath. 🌬️",
+            "Be proud of yourself. 😌", "Every mistake is a step forward. 📈", "Go your own way. 🛤️", "Don't doubt yourself. 🛡️", "You are valuable. 💎",
+            "Discover your talents. 🎨", "Courage is key. 🦁", "Don't let them bring you down. 🧱", "Be a role model. 🌟",
+            "Practice makes perfect. 🛠️", "The journey is the destination. 🗺️", "Stay true to yourself. 💯", "Trust the process. 🌱", "Be grateful. 🙏",
+            "You have the power. ⚡", "Miracles happen. ✨", "Create your future. 🏗️", "New day, new chances. 🎲",
+            "Enjoy the moment. ⏳", "Embrace challenges. 🧗", "Patience pays off. 🌹", "Nothing is impossible. 🌠", "You are enough. ❤️", "Shine bright. ☀️",
+            "Sei mutig und entschlossen. 🦅", "Die Zukunft gehört den Mutigen. 🔮", "Mach jeden Tag zu einem Meisterwerk. 🖼️",
+            "Es ist nie zu spät. ⏰", "Be brave and determined. 🦅", "The future belongs to the brave. 🔮",
+            "Make each day your masterpiece. 🖼️", "It is never too late. ⏰", "Stay positive. ➕",
+            "Lass deine Taten sprechen. 🗣️", "Actions speak louder than words. 🗣️", "Glaube versetzt Berge. ⛰️",
+            "Faith moves mountains. ⛰️", "Du bist der Schmied deines Glücks. 🔨", "Create your own destiny. 🔨", "Lebe deinen Traum. 🌈",
+            "Live your dream. 🌈", "Jeder neue Tag ist eine Chance. 🍀", "Every new day is a chance. 🍀"
+        ];
+
         function newQuote() {
-            const qs = ["Du rockst das! 🚀", "Glaube an dich! ✨", "Heute wird toll! ☀️", "Lernen macht stark! 💪", "Bleib dran! 🎯"];
+            if (!appData.quoteQueue || appData.quoteQueue.length === 0) {
+                appData.quoteQueue = Array.from({length: ALL_QUOTES.length}, (_, i) => i);
+                for (let i = appData.quoteQueue.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [appData.quoteQueue[i], appData.quoteQueue[j]] = [appData.quoteQueue[j], appData.quoteQueue[i]];
+                }
+            }
+            
+            const nextIndex = appData.quoteQueue.pop();
+            const q = ALL_QUOTES[nextIndex];
+            
             const quoteBox = document.getElementById('quote-box');
             if (quoteBox) {
-                quoteBox.value = qs[Math.floor(Math.random()*qs.length)];
+                quoteBox.value = q;
+                appData.quote = q;
                 markDirty();
             }
         }
