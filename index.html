@@ -317,7 +317,7 @@
                             <i data-lucide="printer" class="w-5 h-5 mb-0.5"></i>
                             <span class="top-btn-label">Druck</span>
                         </button>
-                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                         <button onclick="newQuote()" class="top-btn text-pink-500 dark:text-pink-400" title="Spruch">
                             <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
                             <span class="top-btn-label">Spruch</span>
                         </button>
@@ -540,7 +540,7 @@
         const CONFIG = {
             days: ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
             fullDays: ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'],
-            hours: 10
+            hours: 11
         };
 
         let appData = {
@@ -968,6 +968,8 @@
             
             if(!text) return '';
             const s = text.toLowerCase().trim();
+
+            if (s === '1') return 'background-color: #22c55e !important; color: #ffffff !important; border-color: transparent !important; text-shadow: 0 1px 2px rgba(0,0,0,0.2);';
             
             if(s === 'pause' || s.includes('pause')) return 'background-color: #cbd5e1 !important; color: #334155 !important; font-weight: bold; border-style: dashed;';
             
@@ -1281,18 +1283,29 @@
         }
 
         function resetCurrentPlan() {
-            if(confirm("Möchtest du Aufgaben, Klausuren und Noten für ein neues Schuljahr löschen? Dein eingetragener Stundenplan und dein Profilbild bleiben erhalten!")) {
+            if(confirm("Möchtest du den Stundenplan (ohne Zeiten!), Aufgaben, Klausuren und Noten für ein neues Schuljahr löschen? Dein Profilbild bleibt erhalten!")) {
                 appData.tasks = []; 
                 appData.exams = []; 
                 appData.subjects = []; 
+                
+                for (let key in appData.plan) {
+                    if (key.startsWith('cell_')) {
+                        delete appData.plan[key];
+                    }
+                }
+                
                 saveData(true); 
                 init();
             }
         }
 
         function clearVisualGrid() {
-             document.querySelectorAll('textarea[data-key]').forEach(el => el.value = "");
-             appData.plan = {};
+             document.querySelectorAll('textarea[data-base-class="cell-input"]').forEach(el => el.value = "");
+             for (let key in appData.plan) {
+                 if (key.startsWith('cell_')) {
+                     delete appData.plan[key];
+                 }
+             }
         }
 
         function loadData() {
