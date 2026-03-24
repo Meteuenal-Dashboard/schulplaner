@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
+    <title>Schulplaner Ultimate</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        themebg: 'var(--theme-bg)',
+                        themetext: 'var(--theme-text)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Quicksand:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                const app = initializeApp(JSON.parse(__firebase_config));
+                window.fbAuth = getAuth(app);
+                window.fbDb = getFirestore(app);
+                window.signInAnonymously = signInAnonymously;
+                window.doc = doc;
+                window.setDoc = setDoc;
+                window.getDoc = getDoc;
+                window.firebaseLoaded = true;
+            }
+        } catch(e) { window.firebaseLoaded = false; }
+    </script>
+    
+    <style>
+        /* --- GRUNDLAGEN & THEMES --- */
+        :root { --theme-bg: #f8fafc; --theme-card: rgba(255,255,255,0.85); --theme-header: rgba(255, 255, 255, 0.98); }
+        
+        html.theme-blue { --theme-bg: #f0f9ff; }
+        html.theme-mint { --theme-bg: #ecfdf5; }
+        html.theme-lavender { --theme-bg: #faf5ff; }
+        html.theme-peach { --theme-bg: #fff7ed; }
+        html.theme-gold { --theme-bg: #fffbeb; background-image: linear-gradient(135deg, #fef08a 0%, #fde047 100%); }
+
+        html.dark {
+            --theme-bg: #0f172a; 
+            --theme-card: rgba(30, 41, 59, 0.85);
+            --theme-header: rgba(15, 23, 42, 0.98);
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: var(--theme-bg);
+            background-image: radial-gradient(currentColor 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: rgba(148, 163, 184, 0.2);
+            padding-bottom: 90px; /* Platz für Bottom Nav */
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+            transition: background-color 0.3s ease;
+        }
+
+        html.dark body { color: rgba(71, 85, 105, 0.2); }
+
+        .content-wrapper { color: #334155; }
+        html.dark .content-wrapper { color: #f8fafc; }
+        .handwritten { font-family: 'Patrick Hand', cursive; }
+
+        /* --- STICKY HEADER --- */
+        .sticky-header {
+            position: sticky; top: 0; z-index: 500;
+            background: var(--theme-header);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease;
+        }
+
+        /* --- INPUTS & PLANER (Gleichmäßig & Zentriert) --- */
+        .cell-input {
+            width: 100%; height: 100%; min-height: 64px;
+            background-color: rgba(255,255,255,0.9);
+            border: 1px solid #cbd5e1; text-align: center;
+            font-size: 15px; font-weight: 700; border-radius: 10px;
+            resize: none; outline: none; transition: all 0.2s;
+            color: #1e293b;
+            /* Zentrierungstrick für Textareas: Ordentliches Padding */
+            padding-top: 20px;
+            padding-bottom: 20px;
+            padding-left: 4px;
+            padding-right: 4px;
+            touch-action: manipulation;
+        }
+        .theme-dark .cell-input { background-color: rgba(30,41,59,0.9); border-color: #334155; color: #f8fafc; }
+        
+        .cell-input:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important; z-index: 10; position: relative; }
+        .theme-dark .cell-input:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3) !important; }
+
+        .time-input {
+            width: 100%; height: 50px; background: transparent; border: 1px solid transparent;
+            text-align: center; font-weight: 800; color: #475569; font-size: 12px;
+            padding-top: 14px; border-radius: 8px; outline: none; resize: none;
+            line-height: 1.1; display: block; transition: all 0.2s;
+        }
+        html.dark .time-input { color: #94a3b8; }
+        .time-input:focus { background: #fff; border-color: #94a3b8; }
+        html.dark .time-input:focus { background: #1e293b; border-color: #64748b; }
+
+        .status-btn {
+            position: absolute; top: -5px; right: -5px; width: 22px; height: 22px;
+            background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center; font-size: 11px;
+            cursor: pointer; z-index: 20; opacity: 0; transition: opacity 0.2s; border: 1px solid #e2e8f0;
+        }
+        .cell-wrapper:hover .status-btn { opacity: 1; }
+
+        /* --- OBEN BUTTONS --- */
+        .top-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 3.5rem; height: 3.5rem; background: white; border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
+        }
+        @media (max-width: 380px) {
+            .top-btn { width: 3rem; height: 3rem; }
+            .top-btn-label { font-size: 8px !important; }
+        }
+        html.dark .top-btn { background: #1e293b; border-color: #334155; }
+        .top-btn:active { transform: scale(0.95); }
+        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+
+        /* --- BOTTOM NAVIGATION --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--theme-header);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex; justify-content: space-around;
+            padding: 10px 5px env(safe-area-inset-bottom);
+            z-index: 1000;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.03);
+            transition: background-color 0.3s ease;
+        }
+        .nav-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #94a3b8; font-size: 10px; font-weight: 700; gap: 4px;
+            width: 25%; transition: color 0.2s; padding: 5px 0;
+        }
+        .nav-btn.active { color: #6366f1; }
+        .theme-dark .nav-btn.active { color: #818cf8; }
+        
+        /* --- TAB CONTENT --- */
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- MOBILE KARTEN --- */
+        .mobile-card { background: var(--theme-card); border-radius: 18px; margin-bottom: 20px; border: 1px solid rgba(148, 163, 184, 0.2); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: all 0.3s; }
+        .mobile-header { padding: 12px; text-align: center; font-size: 1.4rem; font-weight: bold; color: white; font-family: 'Patrick Hand', cursive; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .mobile-row { display: flex; align-items: flex-start; border-bottom: 1px solid rgba(148, 163, 184, 0.1); padding: 8px; background: rgba(255,255,255,0.4); }
+        html.dark .mobile-row { background: rgba(15, 23, 42, 0.4); }
+        .mobile-row:last-child { border: none; }
+        .mobile-input-wrapper { flex-grow: 1; padding-left: 8px; position: relative; display: flex; align-items: center; }
+
+        /* --- AVATAR UPLOAD --- */
+        .avatar-container {
+            border-radius: 50%; overflow: hidden;
+            border: 2px solid #818cf8; background: #e0e7ff;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        html.dark .avatar-container { border-color: #6366f1; background: #312e81; }
+        .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Color Picker Input Styling */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 0;
+            background: transparent;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid rgba(0,0,0,0.1); border-radius: 50%; }
+
+        /* --- VIEW MODES --- */
+        body.view-desktop #mobile-view { display: none !important; }
+        body.view-desktop #desktop-view { display: block !important; }
+        body.view-mobile #mobile-view { display: block !important; }
+        body.view-mobile #desktop-view { display: none !important; }
+
+        @media screen and (orientation: landscape) {
+            #mobile-view { display: none !important; }
+            #desktop-view { display: block !important; }
+        }
+
+        /* --- PRINT --- */
+        @media print {
+            .no-print, .bottom-nav, .sticky-header, #settings-modal { display: none !important; }
+            #tab-plan { display: block !important; }
+            .tab-content:not(#tab-plan) { display: none !important; }
+            body { background: white !important; color: black !important; padding: 0 !important; }
+            html.dark body { background: white !important; color: black !important; } 
+            #desktop-view { display: block !important; border: 2px solid #000; }
+            #mobile-view { display: none !important; }
+            textarea.cell-input { border: none !important; resize: none; overflow: hidden; font-size: 11pt !important; height: auto !important; background-color: transparent !important; color: black !important; padding: 4px !important;}
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; }
+            h1 { font-size: 24pt !important; color: black !important; }
+            table th { color: black !important; }
+            .status-btn { display: none !important; }
+            /* Farben erzwingen */
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        .custom-checkbox { width: 24px; height: 24px; border: 2px solid #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+        .custom-checkbox.checked { background: #10b981; border-color: #10b981; }
+    </style>
+</head>
+<body class="flex flex-col items-center view-mobile theme-blue" id="app-body">
+
+    <div class="content-wrapper w-full flex flex-col items-center">
+
+        <!-- HEADER -->
+        <div class="sticky-header w-full flex flex-col items-center no-print">
+            <div class="w-full max-w-5xl px-4 pt-3 flex flex-col items-center gap-3">
+                
+                <div class="w-full flex justify-between items-center">
+                    
+                    <!-- Links: Ansicht -->
+                    <div class="flex gap-1">
+                        <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
+                            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                            <span class="top-btn-label">Ansicht</span>
+                        </button>
+                    </div>
+
+                    <!-- Mitte: Name & Profilbild -->
+                    <div class="flex flex-grow justify-center px-1">
+                        <div class="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 pl-1 pr-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm w-full max-w-[160px]">
+                            <div class="avatar-container w-7 h-7" onclick="switchTab('profile')" title="Zum Profil">
+                                <img id="header-avatar" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+" class="avatar-img p-1 object-cover" alt="Avatar">
+                            </div>
+                            <input id="header-name" type="text" 
+                                class="w-full text-center text-sm font-bold text-indigo-700 dark:text-indigo-400 bg-transparent border-none outline-none focus:ring-0 placeholder:text-indigo-300" 
+                                placeholder="Dein Name" 
+                                oninput="syncName(this.value)">
+                        </div>
+                    </div>
+
+                    <!-- Rechts: Teilen, Druck & Spruch -->
+                    <div class="flex gap-1">
+                         <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400" title="Teilen">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                            <span class="top-btn-label">Teilen</span>
+                        </button>
+                         <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
+                            <i data-lucide="printer" class="w-5 h-5"></i>
+                            <span class="top-btn-label">Druck</span>
+                        </button>
+                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                            <span class="top-btn-label">Spruch</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="save-status" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider h-3">Bereit</div>
+            </div>
+            
+            <input id="week-info" type="text" 
+                class="text-sm text-center bg-transparent text-slate-500 dark:text-slate-400 font-medium outline-none w-48 border-b border-transparent focus:border-slate-300 focus:bg-white/50 dark:focus:bg-slate-800 rounded px-2" 
+                placeholder="Klasse / Halbjahr"
+                oninput="markDirty()">
+        </div>
+
+        <div class="w-full max-w-5xl mx-auto px-3 mt-4 relative z-10">
+
+            <!-- ========================================== -->
+            <!-- TAB 1: STUNDENPLAN                         -->
+            <!-- ========================================== -->
+            <div id="tab-plan" class="tab-content active">
+                
+                <div class="print-header hidden">
+                    <h1 class="handwritten text-4xl font-bold">Mein Stundenplan</h1>
+                    <div class="flex justify-center items-center gap-3 mt-2">
+                        <img id="print-avatar" src="" class="w-16 h-16 rounded-full border-2 border-black object-cover hidden">
+                        <div id="print-name-display" class="text-2xl font-bold text-indigo-800"></div>
+                    </div>
+                </div>
+
+                <div id="desktop-view" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hidden">
+                    <!-- WICHTIG: table-fixed sorgt für gleichmäßige Wochentage -->
+                    <table class="w-full text-center border-collapse table-fixed">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                                <th class="p-2 w-8 text-xs text-slate-400 font-bold">#</th>
+                                <th class="p-2 w-24 text-xs text-slate-500 font-bold">Zeit</th>
+                                <th class="p-2 text-lg text-purple-600 dark:text-purple-400 handwritten bg-purple-50/50 dark:bg-purple-900/20">Mo</th>
+                                <th class="p-2 text-lg text-blue-600 dark:text-blue-400 handwritten bg-blue-50/50 dark:bg-blue-900/20">Di</th>
+                                <th class="p-2 text-lg text-emerald-600 dark:text-emerald-400 handwritten bg-emerald-50/50 dark:bg-emerald-900/20">Mi</th>
+                                <th class="p-2 text-lg text-orange-600 dark:text-orange-400 handwritten bg-orange-50/50 dark:bg-orange-900/20">Do</th>
+                                <th class="p-2 text-lg text-pink-600 dark:text-pink-400 handwritten bg-pink-50/50 dark:bg-pink-900/20">Fr</th>
+                            </tr>
+                        </thead>
+                        <tbody id="desktop-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="mobile-view" class="w-full pb-4"></div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAB 2: AUFGABEN                            -->
+            <!-- ========================================== -->
+            <div id="tab-tasks" class="tab-content">
+                <h2 class="text-2xl font-bold handwritten mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="check-square" class="text-green-500"></i> Hausaufgaben</h2>
+                
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-8">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="new-hw-subject" placeholder="Fach" class="w-1/3 bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-400">
+                        <input type="text" id="new-hw-text" placeholder="Aufgabe..." class="w-2/3 bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-400" onkeypress="if(event.key==='Enter') addHomework()">
+                        <button onclick="addHomework()" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                    </div>
+                    <div id="hw-list" class="space-y-2"></div>
+                </div>
+
+                <h2 class="text-2xl font-bold handwritten mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="timer" class="text-red-500"></i> Klausuren</h2>
+                
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-4">
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <input type="date" id="new-exam-date" class="bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400">
+                        <input type="text" id="new-exam-subject" placeholder="Fach & Thema" class="flex-grow bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400">
+                        <button onclick="addExam()" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                    </div>
+                    <div id="exam-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAB 3: NOTEN & FARBEN                      -->
+            <!-- ========================================== -->
+            <div id="tab-grades" class="tab-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold handwritten text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="palette" class="text-blue-500"></i> Fächer & Farben</h2>
+                    <div class="text-sm font-bold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg border border-blue-100 dark:border-blue-800">
+                        Schnitt: <span id="total-average">-</span>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 px-2">Erstelle hier deine Fächer und weise ihnen eine **eigene Farbe** zu. Der Stundenplan übernimmt diese Farbe sofort!</p>
+
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th class="p-3">Fach</th>
+                                    <th class="p-3 text-center">Farbe</th>
+                                    <th class="p-3">Lehrer/Raum</th>
+                                    <th class="p-3 text-center">Note</th>
+                                    <th class="p-3 text-center"><i data-lucide="trash" class="w-4 h-4 mx-auto"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="subject-list" class="text-slate-700 dark:text-slate-200"></tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                        <input type="text" id="new-subj-name" placeholder="Neues Fach eintragen..." class="flex-grow bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 outline-none text-sm focus:border-blue-400">
+                        <button onclick="addSubject()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm">Hinzufügen</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAB 4: PROFIL                              -->
+            <!-- ========================================== -->
+            <div id="tab-profile" class="tab-content">
+                
+                <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8 flex flex-col items-center gap-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-20 dark:opacity-40"></div>
+                    
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200 w-full text-center z-10 text-xl handwritten">Dein Profil</h3>
+                    
+                    <div class="flex flex-col items-center gap-3 w-full z-10">
+                        <div class="avatar-container w-28 h-28 border-4 border-white dark:border-slate-800 shadow-xl group" onclick="document.getElementById('avatar-upload').click()">
+                            <img id="profile-avatar" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+" class="avatar-img p-3 object-cover" alt="Avatar">
+                            <div class="avatar-hover rounded-full"><i data-lucide="camera" class="w-8 h-8"></i></div>
+                            <input type="file" id="avatar-upload" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Tippe auf das Bild</p>
+                        
+                        <div class="w-full max-w-sm mt-2">
+                            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 ml-1 text-center">Dein Name für den Plan:</label>
+                            <input id="profile-name" type="text" class="w-full text-center text-2xl font-bold text-indigo-700 dark:text-indigo-300 bg-slate-50 dark:bg-slate-900 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition-all shadow-inner" placeholder="Wer bist du?" oninput="syncName(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    
+                    <!-- TEILEN BEREICH -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-blue-200 dark:border-blue-900/50 p-4">
+                        <h3 class="font-bold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2"><i data-lucide="share-2" class="w-5 h-5"></i> Plan Teilen</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Sende diesen Stundenplan als Link an deine Familie oder Mitschüler!</p>
+                        <button onclick="shareApp()" class="w-full bg-blue-600 text-white font-bold flex items-center justify-center gap-2 py-3 rounded-xl hover:bg-blue-700 transition shadow-md active:scale-95">
+                            <i data-lucide="send" class="w-4 h-4"></i> Senden / Teilen
+                        </button>
+                    </div>
+
+                    <!-- Design -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2"><i data-lucide="palette" class="w-5 h-5 text-pink-500"></i> App-Design</h3>
+                        
+                        <div class="flex items-center justify-between mb-4 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <span class="font-bold text-slate-700 dark:text-slate-300">Dark Mode</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="dark-mode-toggle" class="sr-only peer" onchange="toggleDarkMode(this.checked)">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex gap-3 justify-center">
+                            <button onclick="setTheme('blue')" class="w-10 h-10 rounded-full bg-[#f0f9ff] border-2 border-blue-200 shadow hover:scale-110 transition"></button>
+                            <button onclick="setTheme('mint')" class="w-10 h-10 rounded-full bg-[#ecfdf5] border-2 border-emerald-200 shadow hover:scale-110 transition"></button>
+                            <button onclick="setTheme('peach')" class="w-10 h-10 rounded-full bg-[#fff7ed] border-2 border-orange-200 shadow hover:scale-110 transition"></button>
+                            <button onclick="setTheme('dark')" class="w-10 h-10 rounded-full bg-[#0f172a] border-2 border-slate-600 shadow hover:scale-110 transition"></button>
+                        </div>
+                    </div>
+
+                    <!-- Setup -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2"><i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i> Setup</h3>
+                        
+                        <button onclick="resetCurrentPlan()" class="w-full text-red-600 dark:text-red-400 font-bold flex items-center justify-center gap-2 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-xl transition border border-red-100 dark:border-red-900/30">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Neues Schuljahr (Reset)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav no-print" id="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('plan', this)">
+            <i data-lucide="calendar" class="w-6 h-6 mb-1"></i><span>Plan</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('tasks', this)">
+            <i data-lucide="check-square" class="w-6 h-6 mb-1"></i><span>Aufgaben</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('grades', this)">
+            <i data-lucide="graduation-cap" class="w-6 h-6 mb-1"></i><span>Noten</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('profile', this)">
+            <i data-lucide="user" class="w-6 h-6 mb-1"></i><span>Profil</span>
+        </button>
+    </nav>
+
+    <script>
+        const CONFIG = {
+            days: ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
+            fullDays: ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'],
+            hours: 10
+        };
+
+        let appData = {
+            plan: {}, 
+            tasks: [], 
+            exams: [], 
+            subjects: [], 
+            streak: 0,
+            theme: 'blue',
+            darkMode: false,
+            abWeeks: false,
+            quote: '',
+            notes: '',
+            week: ''
+        };
+
+        const STORAGE_KEY = "SCHULPLANER_ULTIMATE_DATA";
+        let currentProfile = localStorage.getItem('active_profile') || "MeinPlan";
+        let currentWeek = localStorage.getItem('current_week_type') || 'A';
+        let viewMode = localStorage.getItem('view_mode') || 'mobile';
+        let hasUnsavedChanges = false;
+
+        window.markDirty = function() {
+            hasUnsavedChanges = true;
+            const statusEl = document.getElementById('save-status');
+            if (statusEl && !statusEl.textContent.includes("Gespeichert")) {
+                statusEl.textContent = "Ungespeichert...";
+                statusEl.className = "text-[10px] font-bold text-orange-400 uppercase tracking-wider h-3";
+            }
+        };
+
+        function init() {
+            // Import Handler prüfen BEVOR wir laden
+            handleImport();
+
+            loadData();
+            applyTheme(appData.theme);
+            if(appData.darkMode) document.documentElement.classList.add('dark');
+            
+            document.getElementById('dark-mode-toggle').checked = appData.darkMode;
+            
+            syncName(currentProfile === "MeinPlan" ? "" : currentProfile, true);
+            
+            renderPlan();
+            renderTasks();
+            renderExams();
+            renderSubjects();
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            
+            setInterval(() => {
+                if(hasUnsavedChanges) {
+                    saveData();
+                }
+            }, 2000);
+            
+            applyViewMode();
+        }
+
+        // --- IMPORT LOGIK ---
+        function handleImport() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const importData = urlParams.get('import');
+            if (importData) {
+                try {
+                    const parsed = JSON.parse(decodeURIComponent(atob(importData)));
+                    if (confirm("Möchtest du den gesendeten Stundenplan importieren?")) {
+                        let newName = prompt("Unter welchem Namen soll der Plan gespeichert werden?", "Geteilter Plan");
+                        if (newName) {
+                            currentProfile = newName;
+                            localStorage.setItem('active_profile', currentProfile);
+                            
+                            // Lade existierende Daten oder erstelle neue Struktur
+                            const raw = localStorage.getItem(STORAGE_KEY + "_" + currentProfile);
+                            if(raw) { try { appData = JSON.parse(raw); } catch(e) {} }
+                            
+                            // Verschmelze nur den Stundenplan und die Fächer, um nicht Hausaufgaben zu überschreiben
+                            appData.plan = parsed.plan || {};
+                            appData.subjects = parsed.subjects || [];
+                            
+                            saveData(true);
+                            alert("Der Plan wurde erfolgreich geladen!");
+                        }
+                    }
+                    // URL bereinigen, damit man nicht nochmal gefragt wird
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (e) {
+                    console.error("Import Fehler:", e);
+                    alert("Der Link zum Teilen ist leider ungültig oder beschädigt.");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+        }
+
+        // --- TEILEN LOGIK ---
+        function shareApp() {
+            // Reduzierter Payload: Wir teilen nur den Plan und die Fächer (keine Noten/Hausaufgaben)
+            const payloadData = {
+                plan: appData.plan,
+                subjects: appData.subjects
+            };
+            
+            const payload = JSON.stringify(payloadData);
+            const encoded = btoa(encodeURIComponent(payload));
+            const shareUrl = window.location.origin + window.location.pathname + '?import=' + encoded;
+            
+            const shareData = {
+                title: 'Stundenplan von ' + (currentProfile || 'mir'),
+                text: 'Schau dir meinen Stundenplan an und lade ihn direkt in deine App!',
+                url: shareUrl
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(err => {
+                    console.log("Teilen abgebrochen oder fehlgeschlagen", err);
+                    copyToClipboard(shareUrl);
+                });
+            } else {
+                copyToClipboard(shareUrl);
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Der Link wurde kopiert! Du kannst ihn nun in WhatsApp oder einer Nachricht einfügen.');
+            }).catch(() => {
+                prompt('Dein Browser unterstützt kein automatisches Kopieren. Bitte kopiere diesen Link manuell:', text);
+            });
+        }
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
+            else document.querySelector(`.nav-btn[onclick*="${tabId}"]`).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function toggleView() {
+            viewMode = viewMode === 'mobile' ? 'desktop' : 'mobile';
+            localStorage.setItem('view_mode', viewMode);
+            applyViewMode();
+        }
+
+        function applyViewMode() {
+            document.body.classList.remove('view-mobile', 'view-desktop');
+            document.body.classList.add(`view-${viewMode}`);
+        }
+
+        function toggleDarkMode(isDark) {
+            appData.darkMode = isDark;
+            if(isDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            saveData();
+        }
+
+        function setTheme(theme) {
+            appData.theme = theme;
+            applyTheme(theme);
+            saveData();
+        }
+
+        function applyTheme(theme) {
+            const body = document.getElementById('app-body');
+            body.className = `view-${viewMode} theme-${theme} flex flex-col items-center`;
+        }
+
+        function syncName(val, skipSave = false) {
+            document.getElementById('header-name').value = val;
+            document.getElementById('profile-name').value = val;
+            
+            const newName = val.trim() || "MeinPlan";
+            if(newName !== currentProfile && !skipSave) {
+                currentProfile = newName;
+                localStorage.setItem('active_profile', currentProfile);
+                clearVisualGrid();
+                loadData();
+            }
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX = 200;
+                    let w = img.width, h = img.height;
+                    if(w > h) { if(w > MAX) { h *= MAX/w; w = MAX; } } 
+                    else { if(h > MAX) { w *= MAX/h; h = MAX; } }
+                    canvas.width = w; canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    localStorage.setItem(`AVATAR_${currentProfile}`, dataUrl);
+                    showAvatar(dataUrl);
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function showAvatar(dataUrl) {
+            const defaultSvg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIwIDIxdjItMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+";
+            const els = [document.getElementById('header-avatar'), document.getElementById('profile-avatar')];
+            const printEl = document.getElementById('print-avatar');
+            
+            if(dataUrl) {
+                els.forEach(el => { el.src = dataUrl; el.classList.remove('p-1', 'p-3'); });
+                printEl.src = dataUrl; printEl.classList.remove('hidden');
+            } else {
+                els[0].src = defaultSvg; els[0].classList.add('p-1');
+                els[1].src = defaultSvg; els[1].classList.add('p-3');
+                printEl.classList.add('hidden');
+            }
+        }
+
+        function getCellStyle(text, status) {
+            if (status === 1) return 'background-color: #e2e8f0 !important; color: #64748b !important; text-decoration: line-through; opacity: 0.8;';
+            if (status === 2) return 'background-color: #fef08a !important; color: #854d0e !important; border-color: #fde047 !important;';
+            
+            if(!text) return '';
+            const s = text.toLowerCase().trim();
+            
+            if(s === 'pause' || s.includes('pause')) return 'background-color: #cbd5e1 !important; color: #334155 !important; font-style: italic; border-style: dashed;';
+            
+            if (appData.subjects) {
+                let customSubj = appData.subjects.find(sub => sub.name && sub.name.toLowerCase().trim() === s);
+                if(!customSubj) {
+                    customSubj = appData.subjects.find(sub => sub.name && s.startsWith(sub.name.toLowerCase().trim() + ' '));
+                }
+                if(customSubj && customSubj.color) {
+                    return `background-color: ${customSubj.color} !important; color: #ffffff !important; border-color: transparent !important; text-shadow: 0 1px 2px rgba(0,0,0,0.2);`;
+                }
+            }
+
+            let hexBg = '';
+            if(s.includes('math')) hexBg = '#3b82f6';
+            else if(s.includes('deutsch') || s.includes('ger')) hexBg = '#ef4444';
+            else if(s.includes('eng')) hexBg = '#eab308';
+            else if(s.includes('spo')) hexBg = '#22c55e';
+            else if(s.includes('bio')) hexBg = '#10b981';
+            else if(s.includes('phy') || s.includes('chem')) hexBg = '#06b6d4';
+            else if(s.includes('gesch') || s.includes('pol')) hexBg = '#f97316';
+            else if(s.includes('kunst') || s.includes('musik')) hexBg = '#a855f7';
+            else if(s.includes('reli') || s.includes('ethik')) hexBg = '#6366f1';
+            else if(s.includes('info') || s.includes('it')) hexBg = '#334155';
+            else if(s.includes('franz') || s.includes('span') || s.includes('lat')) hexBg = '#ec4899';
+
+            if(hexBg) {
+                return `background-color: ${hexBg} !important; color: #ffffff !important; border-color: transparent !important;`;
+            }
+            return '';
+        }
+
+        function cycleStatus(day, i) {
+            const key = `cell_${day}_${i}`;
+            if(!appData.plan[key]) appData.plan[key] = { text: '', status: 0 };
+            appData.plan[key].status = (appData.plan[key].status + 1) % 3;
+            markDirty();
+            renderPlan();
+        }
+
+        function getStatusClass(status) { return status === 1 ? 'status-ausfall' : status === 2 ? 'status-vertretung' : ''; }
+        function getStatusIcon(status) { return status === 1 ? '❌' : status === 2 ? '⚠️' : '⋮'; }
+
+        function handleInput(el, key, type) {
+            markDirty();
+            if(type === 'time') {
+                appData.plan[key] = el.value;
+            } else {
+                const isPause = el.value.toLowerCase().trim() === 'pause';
+                if (isPause) {
+                    const match = key.match(/^cell_([A-Za-z]+)_(\d+)(_W[AB])?$/);
+                    if (match) {
+                        const hour = match[2];
+                        const weekSuffix = match[3] || '';
+                        CONFIG.days.forEach(day => {
+                            const rowKey = `cell_${day}_${hour}${weekSuffix}`;
+                            if(!appData.plan[rowKey]) appData.plan[rowKey] = { text: '', status: 0 };
+                            appData.plan[rowKey].text = el.value;
+                            
+                            document.querySelectorAll(`[data-sync="${rowKey}"]`).forEach(partner => {
+                                partner.value = el.value;
+                                partner.style.cssText = getCellStyle(el.value, appData.plan[rowKey].status);
+                            });
+                        });
+                        return;
+                    }
+                }
+
+                if(!appData.plan[key]) appData.plan[key] = { text: '', status: 0 };
+                appData.plan[key].text = el.value;
+                el.style.cssText = getCellStyle(el.value, appData.plan[key].status);
+            }
+            const partner = document.querySelector(`[data-sync="${key}"]:not(:focus)`);
+            if(partner) {
+                partner.value = el.value;
+                if(type !== 'time') partner.style.cssText = getCellStyle(el.value, appData.plan[key].status);
+            }
+        }
+
+        function getPlanKey(key) { return key; }
+
+        function renderPlan() {
+            renderDesktop();
+            renderMobile();
+        }
+
+        function renderDesktop() {
+            const tbody = document.getElementById('desktop-body');
+            let html = '';
+            for(let i=1; i<=CONFIG.hours; i++) {
+                html += `<tr class="border-b border-slate-100 dark:border-slate-800">`;
+                html += `<td class="text-xs font-bold text-slate-400 border-r dark:border-slate-800 align-middle">${i}.</td>`;
+                
+                const timeKey = `time_${i}`;
+                const timeVal = appData.plan[getPlanKey(timeKey)] || '';
+                html += `<td class="p-1 border-r dark:border-slate-800 align-middle">
+                    <textarea data-sync="${timeKey}" class="time-input" placeholder="--:--" oninput="handleInput(this, '${getPlanKey(timeKey)}', 'time')">${timeVal}</textarea>
+                </td>`;
+                
+                CONFIG.days.forEach(day => {
+                    const key = getPlanKey(`cell_${day}_${i}`);
+                    const cellData = appData.plan[key] || { text: '', status: 0 };
+                    
+                    html += `<td class="p-1 border-r dark:border-slate-800 align-middle relative cell-wrapper">
+                        <textarea data-base-class="cell-input" data-sync="${key}" class="cell-input" style="${getCellStyle(cellData.text, cellData.status)}" oninput="handleInput(this, '${key}', 'cell')">${cellData.text}</textarea>
+                        <div class="status-btn no-print" onclick="cycleStatus('${day}', ${i})">${getStatusIcon(cellData.status)}</div>
+                    </td>`;
+                });
+                html += `</tr>`;
+            }
+            tbody.innerHTML = html;
+        }
+
+        function renderMobile() {
+            const container = document.getElementById('mobile-view');
+            let html = '';
+            const headerColors = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-pink-500'];
+
+            CONFIG.days.forEach((day, idx) => {
+                const fullDay = CONFIG.fullDays[idx];
+                html += `<div class="mobile-card"><div class="mobile-header ${headerColors[idx]} text-white">${fullDay}</div>`;
+                for(let i=1; i<=CONFIG.hours; i++) {
+                    const timeKey = getPlanKey(`time_${i}`);
+                    const cellKey = getPlanKey(`cell_${day}_${i}`);
+                    const timeVal = appData.plan[timeKey] || '';
+                    const cellData = appData.plan[cellKey] || { text: '', status: 0 };
+
+                    html += `<div class="mobile-row cell-wrapper">`;
+                    html += `<div class="flex flex-col items-center justify-start w-16 pr-2 border-r border-slate-200 dark:border-slate-700 pt-1">`;
+                    html += `<span class="text-xs font-bold text-slate-400 mb-1">${i}.</span>`;
+                    html += `<textarea data-sync="${timeKey}" class="time-input text-xs h-10 border border-slate-200 dark:border-slate-600" placeholder="Zeit" oninput="handleInput(this, '${timeKey}', 'time')">${timeVal}</textarea>`;
+                    html += `</div>`;
+                    html += `<div class="mobile-input-wrapper relative">`;
+                    html += `<textarea data-base-class="cell-input" data-sync="${cellKey}" class="cell-input" style="${getCellStyle(cellData.text, cellData.status)}" placeholder="Fach..." oninput="handleInput(this, '${cellKey}', 'cell')">${cellData.text}</textarea>`;
+                    html += `<div class="status-btn no-print" style="right:5px; top:5px;" onclick="cycleStatus('${day}', ${i})">${getStatusIcon(cellData.status)}</div>`;
+                    html += `</div></div>`;
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function addHomework() {
+            const sub = document.getElementById('new-hw-subject').value.trim();
+            const text = document.getElementById('new-hw-text').value.trim();
+            if(!text) return;
+            appData.tasks.push({ id: Date.now(), subject: sub || 'Allgemein', text: text, done: false });
+            document.getElementById('new-hw-subject').value = ''; document.getElementById('new-hw-text').value = '';
+            markDirty(); renderTasks();
+        }
+
+        function toggleTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if(task) {
+                task.done = !task.done;
+                markDirty(); renderTasks();
+            }
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('hw-list');
+            if(appData.tasks.length === 0) { container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">Keine Hausaufgaben! 🎉</p>`; return; }
+            let html = '';
+            appData.tasks.sort((a,b) => (a.done === b.done)? 0 : a.done ? 1 : -1).forEach(t => {
+                html += `
+                <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 ${t.done ? 'bg-slate-100 dark:bg-slate-800/50 opacity-60' : 'bg-white dark:bg-slate-800'}">
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="custom-checkbox ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})">${t.done ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}</div>
+                        <div>
+                            <span class="text-xs font-bold uppercase opacity-70 block dark:text-slate-300">${t.subject}</span>
+                            <span class="text-sm font-semibold dark:text-white ${t.done ? 'line-through' : ''}">${t.text}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteTask(${t.id})" class="text-slate-400 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>`;
+            });
+            container.innerHTML = html;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        function deleteTask(id) { appData.tasks = appData.tasks.filter(t => t.id !== id); markDirty(); renderTasks(); }
+
+        function addExam() {
+            const date = document.getElementById('new-exam-date').value;
+            const sub = document.getElementById('new-exam-subject').value.trim();
+            if(!date || !sub) return;
+            appData.exams.push({ id: Date.now(), date: date, subject: sub });
+            document.getElementById('new-exam-subject').value = ''; markDirty(); renderExams();
+        }
+
+        function renderExams() {
+            const container = document.getElementById('exam-list');
+            if(appData.exams.length === 0) { container.innerHTML = `<p class="text-slate-400 text-sm text-center py-4 col-span-full">Keine Arbeiten in Sicht! 😎</p>`; return; }
+            let html = ''; const today = new Date(); today.setHours(0,0,0,0);
+            appData.exams.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(e => {
+                const eDate = new Date(e.date); const diffDays = Math.ceil((eDate - today) / (1000 * 60 * 60 * 24));
+                let countdown = "", colorClass = "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
+                if(diffDays < 0) { countdown = "Vorbei"; colorClass = "bg-slate-100 dark:bg-slate-900 opacity-60"; }
+                else if(diffDays === 0) { countdown = "Heute!"; colorClass = "bg-red-100 dark:bg-red-900/30 border-red-300 text-red-800 dark:text-red-400 animate-pulse"; }
+                else if(diffDays <= 3) { countdown = `In ${diffDays} Tag(en)`; colorClass = "bg-orange-50 dark:bg-orange-900/30 border-orange-200 text-orange-800 dark:text-orange-400"; }
+                else { countdown = `In ${diffDays} Tagen`; }
+
+                html += `
+                <div class="p-3 rounded-xl border ${colorClass} relative">
+                    <button onclick="deleteExam(${e.id})" class="absolute top-2 right-2 text-slate-400 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    <div class="text-xs font-bold opacity-70 dark:text-slate-300">${eDate.toLocaleDateString('de-DE')}</div>
+                    <div class="font-bold text-lg leading-tight mb-1 dark:text-white">${e.subject}</div>
+                    <div class="text-sm font-bold ${diffDays<=3 ? 'text-red-500' : 'text-indigo-500 dark:text-indigo-400'} flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${countdown}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        function deleteExam(id) { appData.exams = appData.exams.filter(e => e.id !== id); markDirty(); renderExams(); }
+
+        function addSubject() {
+            const name = document.getElementById('new-subj-name').value.trim();
+            if(!name) return;
+            
+            const defaultColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+            const randomColor = defaultColors[Math.floor(Math.random() * defaultColors.length)];
+            
+            appData.subjects.push({ id: Date.now(), name: name, teacher: '', room: '', grade: '', color: randomColor });
+            document.getElementById('new-subj-name').value = ''; 
+            markDirty(); renderSubjects(); renderPlan();
+        }
+
+        function updateSubject(id, field, val) {
+            const s = appData.subjects.find(s => s.id === id);
+            if(s) { 
+                s[field] = val; 
+                markDirty(); 
+                if(field === 'grade') updateAverage(); 
+                if(field === 'color' || field === 'name') renderPlan();
+            }
+        }
+
+        function renderSubjects() {
+            const container = document.getElementById('subject-list');
+            if(!appData.subjects) appData.subjects = [];
+            
+            let html = '';
+            appData.subjects.forEach(s => {
+                html += `
+                <tr class="border-b border-slate-100 dark:border-slate-700">
+                    <td class="p-2 font-bold dark:text-white">${s.name}</td>
+                    <td class="p-2 text-center align-middle">
+                        <div class="flex justify-center items-center">
+                            <input type="color" value="${s.color || '#3b82f6'}" onchange="updateSubject(${s.id}, 'color', this.value)" class="w-8 h-8 p-0 border-0 rounded cursor-pointer bg-transparent shadow-sm">
+                        </div>
+                    </td>
+                    <td class="p-2">
+                        <input type="text" placeholder="Notiz/Lehrer" value="${s.teacher}" onchange="updateSubject(${s.id}, 'teacher', this.value)" class="w-full bg-transparent dark:text-white text-sm outline-none border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-blue-400">
+                    </td>
+                    <td class="p-2 w-16">
+                        <input type="number" min="1" max="6" step="0.1" value="${s.grade}" oninput="updateSubject(${s.id}, 'grade', this.value)" class="w-full bg-slate-100 dark:bg-slate-700 dark:text-white rounded text-center font-bold outline-none py-1">
+                    </td>
+                    <td class="p-2 w-8 text-center">
+                        <button onclick="deleteSubject(${s.id})" class="text-slate-400 hover:text-red-500"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>`;
+            });
+            container.innerHTML = html;
+            updateAverage();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        function deleteSubject(id) { appData.subjects = appData.subjects.filter(s => s.id !== id); markDirty(); renderSubjects(); renderPlan(); }
+        function updateAverage() {
+            let sum = 0, count = 0;
+            appData.subjects.forEach(s => { const g = parseFloat(s.grade); if(g && g >= 1 && g <= 6) { sum += g; count++; } });
+            document.getElementById('total-average').textContent = count > 0 ? (sum/count).toFixed(2) : '-';
+        }
+
+        function resetCurrentPlan() {
+            if(confirm("Plan leeren für neues Schuljahr?")) {
+                clearVisualGrid(); appData.tasks = []; appData.exams = []; appData.subjects = []; saveData(true); init();
+            }
+        }
+
+        function clearVisualGrid() {
+             document.querySelectorAll('textarea[data-key]').forEach(el => el.value = "");
+             appData.plan = {};
+        }
+
+        function loadData() {
+            const raw = localStorage.getItem(STORAGE_KEY + "_" + currentProfile);
+            if(raw) { try { appData = { ...appData, ...JSON.parse(raw) }; } catch(e) {} }
+            
+            const savedAvatar = localStorage.getItem(`AVATAR_${currentProfile}`);
+            showAvatar(savedAvatar);
+            
+            const quoteEl = document.getElementById('quote-box');
+            if (quoteEl) quoteEl.value = appData.quote || "";
+            if (!appData.quote && quoteEl) newQuote();
+            
+            const notesEl = document.getElementById('notes-box');
+            if (notesEl) notesEl.value = appData.notes || "";
+            
+            const weekEl = document.getElementById('week-info');
+            if (weekEl) weekEl.value = appData.week || "";
+
+            renderPlan();
+        }
+
+        function saveData(force = false) {
+            if (!hasUnsavedChanges && !force) return;
+            
+            const quoteEl = document.getElementById('quote-box');
+            if (quoteEl) appData.quote = quoteEl.value;
+            const notesEl = document.getElementById('notes-box');
+            if (notesEl) appData.notes = notesEl.value;
+            const weekEl = document.getElementById('week-info');
+            if (weekEl) appData.week = weekEl.value;
+
+            localStorage.setItem(STORAGE_KEY + "_" + currentProfile, JSON.stringify(appData));
+            
+            hasUnsavedChanges = false;
+
+            const statusEl = document.getElementById('save-status');
+            if(statusEl) {
+                statusEl.textContent = "Gespeichert ✅";
+                statusEl.className = "text-[10px] font-bold text-green-600 uppercase tracking-wider h-3";
+                setTimeout(() => {
+                    if(statusEl.textContent === "Gespeichert ✅") {
+                        statusEl.textContent = "Bereit";
+                        statusEl.className = "text-[10px] font-bold text-slate-400 uppercase tracking-wider h-3";
+                    }
+                }, 1500);
+            }
+        }
+
+        function newQuote() {
+            const qs = ["Du rockst das! 🚀", "Glaube an dich! ✨", "Heute wird toll! ☀️", "Lernen macht stark! 💪", "Bleib dran! 🎯"];
+            const quoteBox = document.getElementById('quote-box');
+            if (quoteBox) {
+                quoteBox.value = qs[Math.floor(Math.random()*qs.length)];
+                markDirty();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
