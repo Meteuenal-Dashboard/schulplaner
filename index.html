@@ -167,12 +167,19 @@
         /* --- OBEN BUTTONS --- */
         .top-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 4rem; height: 3.5rem; background: white; border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
+            width: 3.5rem; height: 3.5rem;
+            background: white; border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.1s;
+        }
+        @media (max-width: 380px) {
+            .top-btn { width: 3rem; height: 3rem; }
+            .top-btn-label { font-size: 8px !important; }
         }
         html.dark .top-btn { background: #1e293b; border-color: #334155; }
         .top-btn:active { transform: scale(0.95); }
-        .top-btn-label { font-size: 10px; font-weight: 700; margin-top: 2px; }
+        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
 
         /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
@@ -277,8 +284,9 @@
                     
                     <!-- Links: Ansicht -->
                     <div class="flex gap-1">
-                        <button onclick="toggleView()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Ansicht">
-                            <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                        <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
+                            <i data-lucide="layout-grid" class="w-5 h-5 mb-0.5"></i>
+                            <span class="top-btn-label">Ansicht</span>
                         </button>
                     </div>
 
@@ -297,14 +305,17 @@
 
                     <!-- Rechts: Teilen, Druck & Spruch -->
                     <div class="flex gap-1">
-                         <button onclick="shareApp()" class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm active:scale-95" title="Teilen">
-                            <i data-lucide="send" class="w-5 h-5"></i>
+                         <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700" title="Teilen">
+                            <i data-lucide="send" class="w-5 h-5 mb-0.5"></i>
+                            <span class="top-btn-label">Teilen</span>
                         </button>
-                         <button onclick="window.print()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-sm active:scale-95" title="Drucken">
-                            <i data-lucide="printer" class="w-5 h-5"></i>
+                         <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
+                            <i data-lucide="printer" class="w-5 h-5 mb-0.5"></i>
+                            <span class="top-btn-label">Druck</span>
                         </button>
-                         <button onclick="newQuote()" class="hidden sm:flex w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 items-center justify-center text-pink-500 dark:text-pink-400 shadow-sm active:scale-95" title="Spruch">
-                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                            <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
+                            <span class="top-btn-label">Spruch</span>
                         </button>
                     </div>
                 </div>
@@ -587,6 +598,7 @@
         };
 
         function init() {
+            // Import Handler prüfen BEVOR wir laden
             handleImport();
 
             renderThemes();
@@ -897,7 +909,12 @@
             if(type === 'time') {
                 appData.plan[key] = el.value;
             } else {
-                const isPause = el.value.toLowerCase().trim() === 'pause';
+                const oldText = appData.plan[key] ? (appData.plan[key].text || '').toLowerCase().trim() : '';
+                const newText = el.value.toLowerCase().trim();
+                
+                const isPause = newText === 'pause';
+                const wasPause = oldText === 'pause';
+                
                 if (isPause) {
                     const match = key.match(/^cell_([A-Za-z]+)_(\d+)(_W[AB])?$/);
                     if (match) {
@@ -911,6 +928,24 @@
                             document.querySelectorAll(`[data-sync="${rowKey}"]`).forEach(partner => {
                                 partner.value = el.value;
                                 partner.style.cssText = getCellStyle(el.value, appData.plan[rowKey].status);
+                            });
+                        });
+                        return;
+                    }
+                } else if (wasPause && newText === '') {
+                    // Pause wurde gelöscht -> Ganze Zeile leeren
+                    const match = key.match(/^cell_([A-Za-z]+)_(\d+)(_W[AB])?$/);
+                    if (match) {
+                        const hour = match[2];
+                        const weekSuffix = match[3] || '';
+                        CONFIG.days.forEach(day => {
+                            const rowKey = `cell_${day}_${hour}${weekSuffix}`;
+                            if(!appData.plan[rowKey]) appData.plan[rowKey] = { text: '', status: 0 };
+                            appData.plan[rowKey].text = ''; // Leeren
+                            
+                            document.querySelectorAll(`[data-sync="${rowKey}"]`).forEach(partner => {
+                                partner.value = '';
+                                partner.style.cssText = getCellStyle('', appData.plan[rowKey].status);
                             });
                         });
                         return;
