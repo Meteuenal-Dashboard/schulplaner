@@ -286,7 +286,7 @@
                     <div class="flex gap-1">
                         <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
                             <i data-lucide="layout-grid" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label hidden">Ansicht</span>
+                            <span class="top-btn-label">Ansicht</span>
                         </button>
                     </div>
 
@@ -307,15 +307,15 @@
                     <div class="flex gap-1">
                          <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700" title="Teilen">
                             <i data-lucide="send" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label hidden">Teilen</span>
+                            <span class="top-btn-label">Teilen</span>
                         </button>
                          <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
                             <i data-lucide="printer" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label hidden">Druck</span>
+                            <span class="top-btn-label">Druck</span>
                         </button>
                          <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
                             <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label hidden">Spruch</span>
+                            <span class="top-btn-label">Spruch</span>
                         </button>
                     </div>
                 </div>
@@ -1267,6 +1267,11 @@
                 saveData(true); 
                 init();
             }
+        }
+
+        function clearVisualGrid() {
+             document.querySelectorAll('textarea[data-key]').forEach(el => el.value = "");
+             appData.plan = {};
         }
 
         function loadData() {
