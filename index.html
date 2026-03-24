@@ -443,6 +443,7 @@
                     <div class="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex gap-2">
                         <input type="text" id="new-subj-name" placeholder="Neues Fach eintragen..." class="flex-grow bg-white dark:bg-slate-700 dark:text-white dark:border-slate-600 border border-slate-200 rounded-lg px-3 py-2 outline-none text-sm focus:border-blue-400">
                         <button onclick="addSubject()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-bold text-sm">Hinzufügen</button>
+                        <button onclick="deleteAllSubjects()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 font-bold text-sm">Löschen</button>
                     </div>
                 </div>
             </div>
@@ -1278,7 +1279,18 @@
             updateAverage();
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
+
         function deleteSubject(id) { appData.subjects = appData.subjects.filter(s => s.id !== id); markDirty(); renderSubjects(); renderPlan(); }
+        
+        function deleteAllSubjects() {
+            if(appData.subjects.length > 0 && confirm("Möchtest du wirklich alle Fächer aus der Liste löschen? Die Noten gehen dabei verloren.")) {
+                appData.subjects = [];
+                markDirty();
+                renderSubjects();
+                renderPlan();
+            }
+        }
+
         function updateAverage() {
             let sum = 0, count = 0;
             appData.subjects.forEach(s => { const g = parseFloat(s.grade); if(g && g >= 1 && g <= 6) { sum += g; count++; } });
