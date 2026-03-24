@@ -174,16 +174,12 @@
         /* --- OBEN BUTTONS --- */
         .top-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 3.5rem; height: 3.5rem; background: white; border-radius: 0.75rem;
+            width: 4rem; height: 3.5rem; background: white; border-radius: 0.75rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
-        }
-        @media (max-width: 390px) {
-            .top-btn { width: 3rem; height: 3rem; }
-            .top-btn-label { font-size: 8px !important; }
         }
         html.dark .top-btn { background: #1e293b; border-color: #334155; }
         .top-btn:active { transform: scale(0.95); }
-        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+        .top-btn-label { font-size: 10px; font-weight: 700; margin-top: 2px; }
 
         /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
@@ -290,7 +286,7 @@
                     <div class="flex gap-1">
                         <button onclick="toggleView()" class="top-btn text-blue-600 dark:text-blue-400" title="Ansicht">
                             <i data-lucide="layout-grid" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Ansicht</span>
+                            <span class="top-btn-label hidden">Ansicht</span>
                         </button>
                     </div>
 
@@ -311,15 +307,15 @@
                     <div class="flex gap-1">
                          <button onclick="shareApp()" class="top-btn text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700" title="Teilen">
                             <i data-lucide="send" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Teilen</span>
+                            <span class="top-btn-label hidden">Teilen</span>
                         </button>
                          <button onclick="window.print()" class="top-btn text-slate-600 dark:text-slate-300" title="Drucken">
                             <i data-lucide="printer" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Druck</span>
+                            <span class="top-btn-label hidden">Druck</span>
                         </button>
-                         <button onclick="newQuote()" class="top-btn text-pink-500 dark:text-pink-400" title="Spruch">
+                         <button onclick="newQuote()" class="hidden sm:flex top-btn text-pink-500 dark:text-pink-400" title="Spruch">
                             <i data-lucide="sparkles" class="w-5 h-5 mb-0.5"></i>
-                            <span class="top-btn-label">Spruch</span>
+                            <span class="top-btn-label hidden">Spruch</span>
                         </button>
                     </div>
                 </div>
@@ -447,7 +443,10 @@
                             <div class="avatar-hover rounded-full"><i data-lucide="camera" class="w-8 h-8"></i></div>
                             <input type="file" id="avatar-upload" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
                         </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Tippe auf das Bild</p>
+                        <div class="flex gap-2 items-center">
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full">Tippe auf das Bild</p>
+                            <button onclick="removeAvatar()" class="text-xs text-red-500 bg-red-50 dark:bg-red-900/30 px-3 py-1 rounded-full font-bold border border-red-100 dark:border-red-900"><i data-lucide="trash-2" class="w-3 h-3 inline"></i> Löschen</button>
+                        </div>
                         
                         <div class="w-full max-w-sm mt-2">
                             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 ml-1 text-center">Dein Name für den Plan:</label>
@@ -807,10 +806,32 @@
             
             const newName = val.trim() || "MeinPlan";
             if(newName !== currentProfile && !skipSave) {
+                const oldProfile = currentProfile;
                 currentProfile = newName;
                 localStorage.setItem('active_profile', currentProfile);
-                clearVisualGrid();
-                loadData();
+                
+                // Datenkopie auf neuen Namen, damit der Stundenplan erhalten bleibt
+                const oldData = localStorage.getItem("SCHULPLANER_ULTIMATE_DATA_" + oldProfile);
+                if (oldData) {
+                    localStorage.setItem("SCHULPLANER_ULTIMATE_DATA_" + currentProfile, oldData);
+                    localStorage.removeItem("SCHULPLANER_ULTIMATE_DATA_" + oldProfile);
+                }
+                
+                // Bild migrieren
+                const oldAvatar = localStorage.getItem(`AVATAR_${oldProfile}`);
+                if (oldAvatar) {
+                    localStorage.setItem(`AVATAR_${currentProfile}`, oldAvatar);
+                    localStorage.removeItem(`AVATAR_${oldProfile}`);
+                }
+                
+                markDirty();
+            }
+        }
+
+        function removeAvatar() {
+            if(confirm("Möchtest du dein Profilbild wirklich löschen?")) {
+                localStorage.removeItem(`AVATAR_${currentProfile}`);
+                showAvatar(null);
             }
         }
 
@@ -1239,14 +1260,13 @@
         }
 
         function resetCurrentPlan() {
-            if(confirm("Plan leeren für neues Schuljahr?")) {
-                clearVisualGrid(); appData.tasks = []; appData.exams = []; appData.subjects = []; saveData(true); init();
+            if(confirm("Möchtest du Aufgaben, Klausuren und Noten für ein neues Schuljahr löschen? Dein eingetragener Stundenplan und dein Profilbild bleiben erhalten!")) {
+                appData.tasks = []; 
+                appData.exams = []; 
+                appData.subjects = []; 
+                saveData(true); 
+                init();
             }
-        }
-
-        function clearVisualGrid() {
-             document.querySelectorAll('textarea[data-key]').forEach(el => el.value = "");
-             appData.plan = {};
         }
 
         function loadData() {
