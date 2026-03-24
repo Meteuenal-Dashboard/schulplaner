@@ -163,16 +163,12 @@
         /* --- OBEN BUTTONS --- */
         .top-btn {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 3.5rem; height: 3.5rem; background: white; border-radius: 0.75rem;
+            width: 4rem; height: 3.5rem; background: white; border-radius: 0.75rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; transition: all 0.1s;
-        }
-        @media (max-width: 380px) {
-            .top-btn { width: 3rem; height: 3rem; }
-            .top-btn-label { font-size: 8px !important; }
         }
         html.dark .top-btn { background: #1e293b; border-color: #334155; }
         .top-btn:active { transform: scale(0.95); }
-        .top-btn-label { font-size: 9px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+        .top-btn-label { font-size: 10px; font-weight: 700; margin-top: 2px; }
 
         /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
@@ -620,13 +616,16 @@
             applyViewMode();
         }
 
-        // --- IMPORT LOGIK ---
+        // --- IMPORT LOGIK (Robust & Komprimiert) ---
         function handleImport() {
             const urlParams = new URLSearchParams(window.location.search);
             const importData = urlParams.get('import');
             if (importData) {
                 try {
-                    const parsed = JSON.parse(decodeURIComponent(atob(importData)));
+                    // Robuste Dekodierung (inkl. Umlaute)
+                    const parsedStr = decodeURIComponent(escape(atob(importData)));
+                    const parsed = JSON.parse(parsedStr);
+                    
                     if (confirm("Möchtest du den gesendeten Stundenplan importieren?")) {
                         let newName = prompt("Unter welchem Namen soll der Plan gespeichert werden?", "Geteilter Plan");
                         if (newName) {
@@ -635,11 +634,38 @@
                             
                             // Lade existierende Daten oder erstelle neue Struktur
                             const raw = localStorage.getItem(STORAGE_KEY + "_" + currentProfile);
-                            if(raw) { try { appData = JSON.parse(raw); } catch(e) {} }
+                            if(raw) { 
+                                try { appData = JSON.parse(raw); } catch(e) {} 
+                            } else {
+                                appData = { plan: {}, tasks: [], exams: [], subjects: [], streak: 0, theme: 'blue', darkMode: false, abWeeks: false, quote: '', notes: '', week: '' };
+                            }
                             
-                            // Verschmelze nur den Stundenplan und die Fächer, um nicht Hausaufgaben zu überschreiben
-                            appData.plan = parsed.plan || {};
-                            appData.subjects = parsed.subjects || [];
+                            // Rekonstruiere minimierten Plan
+                            const newPlan = {};
+                            if (parsed.p) {
+                                for (const k in parsed.p) {
+                                    const v = parsed.p[k];
+                                    if (typeof v === 'string') newPlan[k] = v;
+                                    else newPlan[k] = { text: v.t || '', status: v.s || 0 };
+                                }
+                            } else if (parsed.plan) {
+                                newPlan = parsed.plan; // Fallback für alte Links
+                            }
+
+                            // Rekonstruiere Fächer
+                            const newSubjects = [];
+                            if (parsed.s) {
+                                parsed.s.forEach((s, idx) => {
+                                    if (s.name !== undefined) newSubjects.push(s); // Fallback alt
+                                    else newSubjects.push({ id: Date.now() + idx, name: s.n || '', color: s.c || '', teacher: '', grade: '', room: '' });
+                                });
+                            } else if (parsed.subjects) {
+                                parsed.subjects.forEach(s => newSubjects.push(s));
+                            }
+                            
+                            // Zuweisen
+                            appData.plan = newPlan;
+                            if (parsed.s || parsed.subjects) appData.subjects = newSubjects;
                             
                             saveData(true);
                             alert("Der Plan wurde erfolgreich geladen!");
@@ -655,17 +681,28 @@
             }
         }
 
-        // --- TEILEN LOGIK ---
+        // --- TEILEN LOGIK (Komprimiert für Messenger) ---
         function shareApp() {
-            // Reduzierter Payload: Wir teilen nur den Plan und die Fächer (keine Noten/Hausaufgaben)
-            const payloadData = {
-                plan: appData.plan,
-                subjects: appData.subjects
-            };
+            // Um den Link kurz zu halten, filtern wir leere Felder heraus und komprimieren die Namen
+            const minPlan = {};
+            for (const k in appData.plan) {
+                const v = appData.plan[k];
+                if (typeof v === 'string') {
+                    if (v.trim()) minPlan[k] = v;
+                } else if (v && v.text && v.text.trim()) {
+                    minPlan[k] = {t: v.text};
+                    if (v.status) minPlan[k].s = v.status;
+                }
+            }
+            const minSubjects = appData.subjects.map(s => ({n: s.name, c: s.color}));
             
+            const payloadData = { p: minPlan, s: minSubjects };
             const payload = JSON.stringify(payloadData);
-            const encoded = btoa(encodeURIComponent(payload));
-            const shareUrl = window.location.origin + window.location.pathname + '?import=' + encoded;
+            
+            // Sicheres Base64-Encoding auch für Umlaute!
+            const encoded = btoa(unescape(encodeURIComponent(payload)));
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = baseUrl + '?import=' + encoded;
             
             const shareData = {
                 title: 'Stundenplan von ' + (currentProfile || 'mir'),
@@ -675,8 +712,9 @@
 
             if (navigator.share) {
                 navigator.share(shareData).catch(err => {
-                    console.log("Teilen abgebrochen oder fehlgeschlagen", err);
-                    copyToClipboard(shareUrl);
+                    if (err.name !== "AbortError") {
+                        copyToClipboard(shareUrl);
+                    }
                 });
             } else {
                 copyToClipboard(shareUrl);
@@ -720,13 +758,13 @@
                 document.documentElement.classList.remove('dark');
                 updateThemeMetaColor();
             }
-            saveData();
+            saveData(true); // DIREKTES SPEICHERN BEI THEME ÄNDERUNG
         }
 
         function setTheme(theme) {
             appData.theme = theme;
             applyTheme(theme);
-            saveData();
+            saveData(true); // DIREKTES SPEICHERN BEI THEME ÄNDERUNG
         }
 
         function applyTheme(theme) {
